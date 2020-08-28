@@ -29,8 +29,18 @@ def shopSmart(orderList, fruitShops):
         orderList: List of (fruit, numPound) tuples
         fruitShops: List of FruitShops
     """
-    "*** YOUR CODE HERE ***"
-    return None
+
+    min_val = 0
+    best_shop = None
+
+    for shop in fruitShops:
+        shop_price = shop.getPriceOfOrder(orderList)
+
+        if min(shop_price, min_val) == shop_price or min_val == 0:
+            min_val = shop_price
+            best_shop = shop
+
+    return best_shop
 
 
 if __name__ == '__main__':
