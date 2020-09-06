@@ -295,14 +295,14 @@ class CornersProblem(search.SearchProblem):
         space)
         """
         "*** YOUR CODE HERE ***"
-        return self.startingPosition, []
+        return self.startingPosition
 
     def isGoalState(self, state):
         """
         Returns whether this search state is a goal state of the problem.
         """
         "*** YOUR CODE HERE ***"
-        return state[1] == 4
+        return state
 
     def getSuccessors(self, state):
         """
@@ -334,8 +334,8 @@ class CornersProblem(search.SearchProblem):
 
             if not hitsWall:
 
-                item = (2, action, stepCost)
-                #successors.append()
+                item = ((nextx, nexty), action, 1)
+                successors.append(item)
 
         self._expanded += 1 # DO NOT CHANGE
         return successors
