@@ -398,7 +398,6 @@ def cornersHeuristic(state, problem):
                 minCorner = corner
         dist += min
         currentCoord = minCorner
-
     return dist
 
 class AStarCornersAgent(SearchAgent):
@@ -524,6 +523,7 @@ class ClosestDotSearchAgent(SearchAgent):
         problem = AnyFoodSearchProblem(gameState)
 
         "*** YOUR CODE HERE ***"
+        return search.uniformCostSearch(problem)
         util.raiseNotDefined()
 
 class AnyFoodSearchProblem(PositionSearchProblem):
@@ -559,7 +559,7 @@ class AnyFoodSearchProblem(PositionSearchProblem):
         """
         x,y = state
 
-        "*** YOUR CODE HERE ***"
+        return self.food[x][y] == True
         util.raiseNotDefined()
 
 def mazeDistance(point1, point2, gameState):
