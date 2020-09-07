@@ -40,6 +40,7 @@ from game import Actions
 import util
 import time
 import search
+from util import manhattanDistance
 
 class GoWestAgent(Agent):
     "An agent that goes West until it can't."
@@ -288,6 +289,7 @@ class CornersProblem(search.SearchProblem):
         # Please add any code here which you would like to use
         # in initializing the problem
         "*** YOUR CODE HERE ***"
+        self.startingGameState = startingGameState
         self.unvisitedCorners = list(self.corners)
         self.currentState = self.startingPosition, self.unvisitedCorners
 
@@ -337,7 +339,7 @@ class CornersProblem(search.SearchProblem):
                 successorUnvisited = {}
                 successorUnvisited = set(successorUnvisited)
 
-                for corner in state[1]:
+                for corner in state[1]: # if the successor is not a corner, remain as unvisited
                     if corner != successorCoord:
                         successorUnvisited.add(corner)
 
@@ -375,11 +377,29 @@ def cornersHeuristic(state, problem):
     shortest path from the state to a goal of the problem; i.e.  it should be
     admissible (as well as consistent).
     """
-    corners = problem.corners # These are the corner coordinates
+    corners = list(problem.corners) # These are the corner coordinates
     walls = problem.walls # These are the walls of the maze, as a Grid (game.py)
 
-    "*** YOUR CODE HERE ***"
-    node = state[0]
+    if problem.isGoalState(state): # FAIL: heuristic non-zero at goal
+        return 0
+
+    dist = 0
+    currentCoord = state[0]
+
+    while corners:
+        min = 100
+        for corner in corners:
+            cornerDist = manhattanDistance(currentCoord, corner) # mazeDistance: inconsistent, 1358 nodes, slow AF
+            if (cornerDist < min):
+                min = cornerDist
+                minCorner = corner
+        dist += manhattanDistance(currentCoord, minCorner)
+        corners.remove(minCorner)
+        currentCoord = minCorner
+
+    return dist
+
+    """node = state[0]
     explored = state[1]
     explored_corners = []
 
@@ -388,8 +408,7 @@ def cornersHeuristic(state, problem):
             explored_corners.append(corner)
 
     manhattanHeuristic()
-
-    return 0 # Default to trivial solution
+    return 0 # Default to trivial solution"""
 
 class AStarCornersAgent(SearchAgent):
     "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
