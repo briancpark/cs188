@@ -289,23 +289,26 @@ class CornersProblem(search.SearchProblem):
         # Please add any code here which you would like to use
         # in initializing the problem
         "*** YOUR CODE HERE ***"
-        self.startingGameState = startingGameState
-        self.unvisitedCorners = list(self.corners)
-        self.currentState = self.startingPosition, self.unvisitedCorners
 
     def getStartState(self):
         """
         Returns the start state (in your state space, not the full Pacman state
         space)
         """
-        return self.currentState
+        return self.startingPosition, []
 
     def isGoalState(self, state):
         """
         Returns whether this search state is a goal state of the problem.
         """
         "*** YOUR CODE HERE ***"
-        return len(state[1]) == 0
+        node = state[0]
+        explored_corners = state[1]
+
+        if node in self.corners and node not in explored_corners:
+            explored_corners.append(node)
+
+        return len(explored_corners) == 4
 
     def getSuccessors(self, state):
         """
@@ -333,19 +336,14 @@ class CornersProblem(search.SearchProblem):
             dx, dy = Actions.directionToVector(action)
             nextx, nexty = int(x + dx), int(y + dy)
             hitsWall = self.walls[nextx][nexty]
+            explored_corners = state[1]
 
             if not hitsWall:
-                successorCoord = (nextx, nexty)
-                successorUnvisited = {}
-                successorUnvisited = set(successorUnvisited)
-
-                for corner in state[1]: # if the successor is not a corner, remain as unvisited
-                    if corner != successorCoord:
-                        successorUnvisited.add(corner)
-
-                successor = successorCoord, successorUnvisited
-                item = (successor, action, 1)
-                successors.append(item)
+                explored_corners = list(explored_corners)
+                successor_node = (nextx, nexty)
+                if successor_node in self.corners and successor_node not in explored_corners:
+                    explored_corners.append(successor_node)
+                successors.append(((successor_node, explored_corners), action, 1))
 
         self._expanded += 1 # DO NOT CHANGE
         return successors
@@ -377,28 +375,27 @@ def cornersHeuristic(state, problem):
     shortest path from the state to a goal of the problem; i.e.  it should be
     admissible (as well as consistent).
     """
-    corners = problem.corners # These are the corner coordinates
-    walls = problem.walls # These are the walls of the maze, as a Grid (game.py)
-    visited = {}
-    visited = set(visited)
-    dist = 0
-    currentCoord = state[0]
+    corners = problem.corners  # These are the corner coordinates
+    walls = problem.walls  # These are the walls of the maze, as a Grid (game.py)
 
-    while len(visited) != 4:
-        min = 100
-        for corner in corners:
-            if corner in visited:
-                continue
-            visited.add(corner)
-            cornerDist = manhattanDistance(currentCoord, corner)
-            # mazeDistance(currentCoord, corner, problem.startingGameState)
-            # 1504 nodes but slow, full credit possible with only manhattan
-            if cornerDist < min:
-                min = cornerDist
-                minCorner = corner
-        dist += min
-        currentCoord = minCorner
-    return dist
+    currentCoord = state[0]
+    explored_nodes = state[1]
+
+    unexplored_corners = []
+    total_distance = 0
+
+    for corner in corners:
+        if corner not in explored_nodes:
+            unexplored_corners.append(corner)
+
+    while unexplored_corners:
+        dist_to_corners = []
+        for corner in unexplored_corners:
+            dist_to_corners.append((util.manhattanDistance(currentCoord, corner), corner))
+        total_distance += min(dist_to_corners)[0]
+        currentCoord = unexplored_corners.pop(0)
+
+    return total_distance
 
 class AStarCornersAgent(SearchAgent):
     "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
