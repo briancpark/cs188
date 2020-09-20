@@ -156,7 +156,33 @@ class MinimaxAgent(MultiAgentSearchAgent):
         Returns whether or not the game state is a losing state
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return self.value(gameState, self.index, self.depth)
+
+    def value(self, state, agent_index, depth):
+        if state.isWin() or state.isLose() or depth <= 0:
+            return self.evaluationFunction(state)
+        if agent_index == 0:
+            return self.max_value(state, agent_index, depth - 1)
+        if agent_index != 0:
+            return self.min_value(state, agent_index, depth - 1)
+
+    def max_value(self, state, agent_index, depth):
+        v = float("-inf")
+        successors = [state.generateSuccessor(agent_index, action) for action in state.getLegalActions(agent_index)]
+
+        for successor in successors:
+            v = max(v, self.value(successor, (agent_index + 1) % state.getNumAgents(), depth))
+
+        return v
+
+    def min_value(self, state, agent_index, depth):
+        v = float("inf")
+        successors = [state.generateSuccessor(agent_index, action) for action in state.getLegalActions(agent_index)]
+
+        for successor in successors:
+            v = min(v, self.value(successor, (agent_index + 1) % state.getNumAgents(), depth))
+
+        return v
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """
