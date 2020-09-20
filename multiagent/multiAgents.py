@@ -277,15 +277,17 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         return v
 
     def exp_value(self, state, agent_index, layers):
-        v = (0, Directions.STOP)
+        v = 0
+        states = []
 
         for action in state.getLegalActions(agent_index):
-            #Pseudocode
-            #p = probability(successor)
-            #v += p * value(successor)
-            v = min(v, (self.value(state.generateSuccessor(agent_index, action), (agent_index + 1) % state.getNumAgents(), layers)[0], action), key=lambda x: x[0])
+            score = self.value(state.generateSuccessor(agent_index, action), (agent_index + 1) % state.getNumAgents(), layers)[0]
+            v += score
+            states.append((score, action))
 
-        return v
+        expected = v / state.getNumAgents()
+
+        return expected, min(states, key=lambda x: abs(x[0] - expected))[1]
 
 def betterEvaluationFunction(currentGameState):
     """
