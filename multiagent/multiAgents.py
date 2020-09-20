@@ -156,31 +156,39 @@ class MinimaxAgent(MultiAgentSearchAgent):
         Returns whether or not the game state is a losing state
         """
         "*** YOUR CODE HERE ***"
-        return self.value(gameState, self.index, self.depth)
+        """
+        My thought process:
+        layers is going to be depth * number of agents
+        Pacman will always be indexed at 0, so it'll be a max agent, while ghosts are min
+        Represent states as tuple: (value, direction)
+        """
+        return self.value(gameState, self.index, self.depth * gameState.getNumAgents())[1]
 
-    def value(self, state, agent_index, depth):
-        if state.isWin() or state.isLose() or depth <= 0:
-            return self.evaluationFunction(state)
+    def value(self, state, agent_index, layers):
+        if state.isWin() or state.isLose() or layers == 0:
+            return self.evaluationFunction(state), Directions.STOP
         if agent_index == 0:
-            return self.max_value(state, agent_index, depth - 1)
+            return self.max_value(state, agent_index, layers - 1)
         if agent_index != 0:
-            return self.min_value(state, agent_index, depth - 1)
+            return self.min_value(state, agent_index, layers - 1)
 
-    def max_value(self, state, agent_index, depth):
-        v = float("-inf")
-        successors = [state.generateSuccessor(agent_index, action) for action in state.getLegalActions(agent_index)]
+    def max_value(self, state, agent_index, layers):
+        v = (float("-inf"), Directions.STOP)
+
+        successors = [(state.generateSuccessor(agent_index, action), action) for action in state.getLegalActions(agent_index)]
 
         for successor in successors:
-            v = max(v, self.value(successor, (agent_index + 1) % state.getNumAgents(), depth))
+            v = max(v, (self.value(successor[0], (agent_index + 1) % state.getNumAgents(), layers)[0], successor[1]), key=lambda x: x[0])
 
         return v
 
-    def min_value(self, state, agent_index, depth):
-        v = float("inf")
-        successors = [state.generateSuccessor(agent_index, action) for action in state.getLegalActions(agent_index)]
+    def min_value(self, state, agent_index, layers):
+        v = (float("inf"), Directions.STOP)
+
+        successors = [(state.generateSuccessor(agent_index, action), action) for action in state.getLegalActions(agent_index)]
 
         for successor in successors:
-            v = min(v, self.value(successor, (agent_index + 1) % state.getNumAgents(), depth))
+            v = min(v, (self.value(successor[0], (agent_index + 1) % state.getNumAgents(), layers)[0], successor[1]), key=lambda x: x[0])
 
         return v
 
