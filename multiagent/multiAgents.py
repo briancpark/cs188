@@ -175,21 +175,21 @@ class MinimaxAgent(MultiAgentSearchAgent):
     def max_value(self, state, agent_index, layers):
         v = (float("-inf"), Directions.STOP)
 
-        successors = [(state.generateSuccessor(agent_index, action), action) for action in state.getLegalActions(agent_index)]
-
-        for successor in successors:
-            v = max(v, (self.value(successor[0], (agent_index + 1) % state.getNumAgents(), layers)[0], successor[1]), key=lambda x: x[0])
-
+        for action in state.getLegalActions(agent_index):
+            v = max(v,
+                    (self.value(state.generateSuccessor(agent_index, action), (agent_index + 1) % state.getNumAgents(),
+                                layers)[0], action),
+                    key=lambda x: x[0])
         return v
 
     def min_value(self, state, agent_index, layers):
         v = (float("inf"), Directions.STOP)
 
-        successors = [(state.generateSuccessor(agent_index, action), action) for action in state.getLegalActions(agent_index)]
-
-        for successor in successors:
-            v = min(v, (self.value(successor[0], (agent_index + 1) % state.getNumAgents(), layers)[0], successor[1]), key=lambda x: x[0])
-
+        for action in state.getLegalActions(agent_index):
+            v = min(v,
+                    (self.value(state.generateSuccessor(agent_index, action), (agent_index + 1) % state.getNumAgents(),
+                                layers)[0], action),
+                    key=lambda x: x[0])
         return v
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
@@ -202,7 +202,45 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         Returns the minimax action using self.depth and self.evaluationFunction
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return self.value(gameState, self.index, self.depth * gameState.getNumAgents(), float("-inf"), float("inf"))[1]
+
+    def value(self, state, agent_index, layers, alpha, beta):
+        if state.isWin() or state.isLose() or layers == 0:
+            return self.evaluationFunction(state), Directions.STOP
+        if agent_index == 0:
+            return self.max_value(state, agent_index, layers - 1, alpha, beta)
+        if agent_index != 0:
+            return self.min_value(state, agent_index, layers - 1, alpha, beta)
+
+    def max_value(self, state, agent_index, layers, alpha, beta):
+        v = (float("-inf"), Directions.STOP)
+
+        for action in state.getLegalActions(agent_index):
+            v = max(v,
+                    (self.value(state.generateSuccessor(agent_index, action), (agent_index + 1) % state.getNumAgents(), layers, alpha, beta)[0], action),
+                    key=lambda x: x[0])
+
+            if v[0] > beta:
+                return v
+
+            alpha = max(alpha, v[0])
+
+        return v
+
+    def min_value(self, state, agent_index, layers, alpha, beta):
+        v = (float("inf"), Directions.STOP)
+
+        for action in state.getLegalActions(agent_index):
+            v = min(v,
+                    (self.value(state.generateSuccessor(agent_index, action), (agent_index + 1) % state.getNumAgents(), layers, alpha, beta)[0], action),
+                    key=lambda x: x[0])
+
+            if v[0] < alpha:
+                return v
+
+            beta = min(beta, v[0])
+
+        return v
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
     """
