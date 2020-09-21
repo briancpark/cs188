@@ -285,7 +285,7 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
             v += score
             states.append((score, action))
 
-        expected = v / state.getNumAgents()
+        expected = v / len(states)
 
         return expected, min(states, key=lambda x: abs(x[0] - expected))[1]
 

@@ -345,7 +345,7 @@ class PacmanGameTreeTest(testClasses.TestCase):
                            altDepthActions, partialPlyBugActions)
         # check return codes and assign grades
         disp = self.question.getDisplay()
-        stats = run(lay, self.layout_name, studentAgent, [DirectionalGhost(
+        stats = run(lay, self.layout_name, pac, [DirectionalGhost(
             i + 1) for i in range(2)], disp, name=self.alg)
         if stats['timeouts'] > 0:
             self.addMessage('Agent timed out on smallClassic.  No credit')

@@ -1,6 +1,6 @@
 class: "PacmanGameTreeTest"
 alg: "ExpectimaxAgent"
-seed: "30"
+seed: "0"
 depth: "2"
 max_points: "4"
 
