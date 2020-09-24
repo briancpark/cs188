@@ -294,7 +294,7 @@ def betterEvaluationFunction(currentGameState):
     Your extreme ghost-hunting, pellet-nabbing, food-gobbling, unstoppable
     evaluation function (question 5).
 
-    DESCRIPTION: UPDATEME
+    DESCRIPTION: Play with random numbers
     """
     "*** YOUR CODE HERE ***"
 
@@ -306,6 +306,7 @@ def betterEvaluationFunction(currentGameState):
     ghostPos = [ghost.getPosition() for ghost in newGhostStates]
 
     foodDistances = sum([manhattanDistance(newPos, food) for food in foodPos])
+    nearestFood = min([manhattanDistance(newPos, food) for food in foodPos], default=float('inf'))
     nearestGhost = min([manhattanDistance(newPos, ghost) for ghost in ghostPos], default=float('inf'))
 
     score = scoreEvaluationFunction(currentGameState)
@@ -324,14 +325,12 @@ def betterEvaluationFunction(currentGameState):
         score -= 1000
 
     if nearestGhost < 4:
-        score -= 100
-
-    if nearestGhost < 6:
         score -= 10
 
+    if nearestGhost < 6:
+        score -= 1
 
-
-    return score - foodDistances - nearestGhost + len(foodPos) + (1 * farthestCapsule)
+    return (score) - (foodDistances) - (nearestGhost) - (15.79 * (len(foodPos) - 1)) - (1 * farthestCapsule) + (0.5 * nearestFood)
 
 # Abbreviation
 better = betterEvaluationFunction
