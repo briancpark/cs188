@@ -294,10 +294,44 @@ def betterEvaluationFunction(currentGameState):
     Your extreme ghost-hunting, pellet-nabbing, food-gobbling, unstoppable
     evaluation function (question 5).
 
-    DESCRIPTION: <write something here so we know what you did>
+    DESCRIPTION: UPDATEME
     """
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+
+    newPos = currentGameState.getPacmanPosition()
+    newFood = currentGameState.getFood()
+    newGhostStates = currentGameState.getGhostStates()
+
+    foodPos = newFood.asList()
+    ghostPos = [ghost.getPosition() for ghost in newGhostStates]
+
+    foodDistances = sum([manhattanDistance(newPos, food) for food in foodPos])
+    nearestGhost = min([manhattanDistance(newPos, ghost) for ghost in ghostPos], default=float('inf'))
+
+    score = scoreEvaluationFunction(currentGameState)
+
+    capsules = currentGameState.getCapsules()
+    nearestCapsule = min([manhattanDistance(newPos, cap) for cap in capsules], default=float('inf'))
+    farthestCapsule = min([manhattanDistance(newPos, cap) for cap in capsules], default=float('inf'))
+
+    if currentGameState.isWin():
+        return float("inf")
+
+    if currentGameState.isLose() or nearestGhost < 1:
+        return float("-inf")
+
+    if newPos not in foodPos:
+        score -= 1000
+
+    if nearestGhost < 4:
+        score -= 100
+
+    if nearestGhost < 6:
+        score -= 10
+
+
+
+    return score - foodDistances - nearestGhost + len(foodPos) + (1 * farthestCapsule)
 
 # Abbreviation
 better = betterEvaluationFunction
