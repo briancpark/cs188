@@ -24,7 +24,8 @@ IMPORTANT
 but when you're ready to test your own agent, replace it with MyAgent
 """
 def createAgents(num_pacmen, agent='ClosestDotAgent'):
-    return [eval(agent)(index=i) for i in range(num_pacmen)]
+    return [eval(agent)(index=0)]
+    #return [eval(agent)(index=i) for i in range(num_pacmen)]
 
 class MyAgent(Agent):
     """
@@ -37,8 +38,41 @@ class MyAgent(Agent):
         """
 
         "*** YOUR CODE HERE ***"
+        return self.value(gameState, self.index, self.depth * gameState.getNumAgents())[1]
 
-        raise NotImplementedError()
+    def value(self, state, agent_index, layers):
+        if state.isWin() or state.isLose() or layers == 0:
+            return self.evaluationFunction(state), Directions.STOP
+        if agent_index == 0:
+            return self.max_value(state, agent_index, layers - 1)
+        if agent_index != 0:
+            return self.exp_value(state, agent_index, layers - 1)
+
+    def max_value(self, state, agent_index, layers):
+        v = (float("-inf"), Directions.STOP)
+
+        for action in state.getLegalActions(agent_index):
+            v = max(v,
+                    (self.value(state.generateSuccessor(agent_index, action),
+                                (agent_index + 1) % state.getNumAgents(),
+                                layers)[0], action),
+                    key=lambda x: x[0])
+        return v
+
+    def exp_value(self, state, agent_index, layers):
+        v = 0
+        states = []
+
+        for action in state.getLegalActions(agent_index):
+            score = \
+            self.value(state.generateSuccessor(agent_index, action), (agent_index + 1) % state.getNumAgents(),
+                       layers)[0]
+            v += score
+            states.append((score, action))
+
+        expected = v / len(states)
+
+        return expected, min(states, key=lambda x: abs(x[0] - expected))[1]
 
     def initialize(self):
         """
@@ -49,7 +83,7 @@ class MyAgent(Agent):
 
         "*** YOUR CODE HERE"
 
-        raise NotImplementedError()
+        #raise NotImplementedError()
 
 """
 Put any other SearchProblems or search methods below. You may also import classes/methods in
@@ -71,7 +105,7 @@ class ClosestDotAgent(Agent):
 
 
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return search.aStarSearch(problem)
 
     def getAction(self, state):
         return self.findPathToClosestDot(state)[0]
@@ -110,5 +144,5 @@ class AnyFoodSearchProblem(PositionSearchProblem):
         x,y = state
 
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return self.food[x][y] == True
 
