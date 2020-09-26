@@ -24,7 +24,8 @@ IMPORTANT
 but when you're ready to test your own agent, replace it with MyAgent
 """
 def createAgents(num_pacmen, agent='ClosestDotAgent'):
-    return [eval(agent)(index=0)]
+    return [eval(agent)(index=i) for i in range(min(2, num_pacmen))]
+    #return [eval(agent)(index=0)]
     #return [eval(agent)(index=i) for i in range(num_pacmen)]
 
 class MyAgent(Agent):
