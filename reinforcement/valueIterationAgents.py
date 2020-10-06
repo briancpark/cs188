@@ -147,7 +147,7 @@ class AsynchronousValueIterationAgent(ValueIterationAgent):
 
     def runValueIteration(self):
         "*** YOUR CODE HERE ***"
-
+        # Vk+1(s) ← maxa ∑s′T(s,a,s′)[R(s,a,s′)+γVk(s′)]
 class PrioritizedSweepingValueIterationAgent(AsynchronousValueIterationAgent):
     """
         * Please read learningAgents.py before reading this.*
