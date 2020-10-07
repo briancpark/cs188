@@ -189,9 +189,9 @@ class PrioritizedSweepingValueIterationAgent(AsynchronousValueIterationAgent):
             transitions = [self.mdp.getTransitionStatesAndProbs(state, action) for action in self.mdp.getPossibleActions(state)]
             for transition in transitions:
                 if transition[0][0] in predecessors:
-                    predecessors[transition[0][0]].add(state)
+                    predecessors[transition[0][0]].append(state)
                 else:
-                    predecessors[transition[0][0]] = {state}
+                    predecessors[transition[0][0]] = [state]
 
         PQ = util.PriorityQueue()
 
