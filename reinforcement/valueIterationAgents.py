@@ -147,7 +147,22 @@ class AsynchronousValueIterationAgent(ValueIterationAgent):
 
     def runValueIteration(self):
         "*** YOUR CODE HERE ***"
-        # Vk+1(s) ← maxa ∑s′T(s,a,s′)[R(s,a,s′)+γVk(s′)]
+        for i in range(self.iterations):
+            states = [state for state in self.mdp.getStates()]
+            q_values = self.values.copy()
+
+            state = states[i % len(states)]
+
+            vals = []
+            for action in self.mdp.getPossibleActions(state):
+                vals.append(self.computeQValueFromValues(state, action))
+
+            if len(vals) != 0:
+                q_values[state] = max(vals)
+
+            self.values.update(q_values)
+
+
 class PrioritizedSweepingValueIterationAgent(AsynchronousValueIterationAgent):
     """
         * Please read learningAgents.py before reading this.*
