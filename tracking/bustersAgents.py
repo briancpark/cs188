@@ -144,19 +144,12 @@ class GreedyBustersAgent(BustersAgent):
             [beliefs for i, beliefs in enumerate(self.ghostBeliefs)
              if livingGhosts[i+1]]
         "*** YOUR CODE HERE ***"
-        # first you should compute the most likely position for each ghost, and store that in a list.
-
-        successorPositionActionPairs = [Actions.getSuccessor(pacmanPosition, action) for action in legal]
-
+        successorPositionActionPairs = [(Actions.getSuccessor(pacmanPosition, action), action) for action in legal]
         mostLikelyPositions = []
 
         for dist in livingGhostPositionDistributions:
             mostLikelyGhostPosition = max(dist, key=dist.get)
-            distances = [(self.distancer.getDistance(mostLikelyGhostPosition, successorPosition), successorAction) for successorPosition, successorAction in successorPositionActionPairs]
-            mostLikelyPositions.append(mostLikelyGhostPosition)
+            distances = [(self.distancer.getDistance(mostLikelyGhostPosition, successor[0]), successor[1]) for successor in successorPositionActionPairs]
+            mostLikelyPositions.append(min(distances))
 
-
-        return None #min(distances)
-        # And then you choose the closest pos* of these positions (using self.distancer.getDistance).
-        # Then you iterate through all the legal actions and choose the one that brings you closest to pos*.
-
+        return min(mostLikelyPositions)[1]
