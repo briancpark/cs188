@@ -345,7 +345,11 @@ class ParticleFilter(InferenceModule):
         """
         self.particles = []
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+
+        for i in range(self.numParticles):
+            particle = self.legalPositions[i % len(self.legalPositions)]
+            self.particles.append(particle)
+
 
     def observeUpdate(self, observation, gameState):
         """
@@ -360,7 +364,20 @@ class ParticleFilter(InferenceModule):
         the DiscreteDistribution may be useful.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        pacmanPosition = gameState.getPacmanPosition()
+        jailPosition = self.getJailPosition()
+
+        beliefs = DiscreteDistribution()
+
+        for particle in self.particles:
+            beliefs[particle] += self.getObservationProb(observation, pacmanPosition, particle, jailPosition)
+
+        beliefs.normalize()
+
+        if beliefs.total() == 0:
+            self.initializeUniformly(gameState)
+        else:
+            self.particles = [beliefs.sample() for _ in range(self.numParticles)]
 
     def elapseTime(self, gameState):
         """
@@ -368,7 +385,12 @@ class ParticleFilter(InferenceModule):
         gameState.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        newParticles = []
+
+        for oldPos in self.particles:
+            newPosDist = self.getPositionDistribution(gameState, oldPos)
+            newParticles.append(newPosDist.sample())
+        self.particles = newPartic
 
     def getBeliefDistribution(self):
         """
@@ -378,8 +400,13 @@ class ParticleFilter(InferenceModule):
         
         This function should return a normalized distribution.
         """
-        "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        beliefs = DiscreteDistribution()
+
+        for particle in self.particles:
+            beliefs[particle] += 1
+
+        beliefs.normalize()
+        return beliefs
 
 
 class JointParticleFilter(ParticleFilter):
@@ -407,7 +434,7 @@ class JointParticleFilter(ParticleFilter):
         """
         self.particles = []
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+
 
     def addGhostAgent(self, agent):
         """
