@@ -390,7 +390,7 @@ class ParticleFilter(InferenceModule):
         for oldPos in self.particles:
             newPosDist = self.getPositionDistribution(gameState, oldPos)
             newParticles.append(newPosDist.sample())
-        self.particles = newPartic
+        self.particles = newParticles
 
     def getBeliefDistribution(self):
         """
@@ -434,7 +434,6 @@ class JointParticleFilter(ParticleFilter):
         """
         self.particles = []
         "*** YOUR CODE HERE ***"
-
 
     def addGhostAgent(self, agent):
         """
