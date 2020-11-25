@@ -158,8 +158,8 @@ class DigitClassificationModel(object):
         self.hidden_layer_size_1 = 400  # Hidden layer sizes: between 10 and 400
         self.hidden_layer_size_2 = 100
         self.hidden_layer_size_3 = 100
-        self.alpha = 0.1  # Between 0.001 and 1.0
-        self.batch_size = 100  # 1 and the size of the dataset
+        self.alpha = 0.75  # Between 0.001 and 1.0
+        self.batch_size = 50  # 1 and the size of the dataset
 
         # layers
         # f(x) = relu(     relu(x*W1+b1)      *W2+b2)     *W3+b3
@@ -215,7 +215,7 @@ class DigitClassificationModel(object):
         for x, y in dataset.iterate_forever(self.hidden_layer_size_1):
             loss = self.get_loss(x, y)
 
-            if nn.as_scalar(loss) <= 0.01 or dataset.get_validation_accuracy() >= 0.98:
+            if nn.as_scalar(loss) <= 0.005 or dataset.get_validation_accuracy() >= 0.975:
                 break
 
             gradients = nn.gradients(loss, self.params)
