@@ -241,10 +241,10 @@ class LanguageIDModel(object):
 
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
-        self.batch_size = 200
+        self.batch_size = 100
 
-        self.hidden_layer_size_1 = 600
-        self.hidden_layer_size_2 = 600
+        self.hidden_layer_size_1 = 300
+        self.hidden_layer_size_2 = 300
 
         self.w1 = nn.Parameter(self.num_chars, self.hidden_layer_size_1)
         self.b1 = nn.Parameter(1, self.hidden_layer_size_1)
@@ -253,7 +253,7 @@ class LanguageIDModel(object):
         self.w3 = nn.Parameter(self.hidden_layer_size_2, 5)
         self.b3 = nn.Parameter(1, 5)
 
-        self.alpha = 0.05
+        self.alpha = 0.1
         self.params = [self.w1, self.b1, self.w2, self.b2, self.w3, self.b3]
 
     def run(self, xs):
@@ -316,7 +316,7 @@ class LanguageIDModel(object):
         """
         "*** YOUR CODE HERE ***"
 
-        for x, y in dataset.iterate_forever(self.hidden_layer_size_1):
+        for x, y in dataset.iterate_forever(self.batch_size):
             loss = self.get_loss(x, y)
 
             if dataset.get_validation_accuracy() >= 0.85:
