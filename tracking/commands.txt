@@ -1,0 +1,3 @@
+python busters.py
+python autograder.py -t test_cases/q1/1-ObsProb
+python -m doctest -v inference.py
