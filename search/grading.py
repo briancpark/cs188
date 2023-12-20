@@ -14,12 +14,10 @@
 
 "Common code for autograders"
 
-import cgi
+from html import escape
 import time
-import sys
 import json
 import traceback
-import pdb
 from collections import defaultdict
 import util
 
@@ -144,7 +142,7 @@ to follow your instructor's guidelines to receive credit on your project.
   def addExceptionMessage(self, q, inst, traceback):
     """
     Method to format the exception message, this is more complicated because
-    we need to cgi.escape the traceback but wrap the exception in a <pre> tag
+    we need to escape the traceback but wrap the exception in a <pre> tag
     """
     self.fail('FAIL: Exception raised: %s' % inst)
     self.addMessage('')
@@ -291,7 +289,7 @@ to follow your instructor's guidelines to receive credit on your project.
         if self.mute: util.unmutePrint()
         print('*** ' + message)
         if self.mute: util.mutePrint()
-        message = cgi.escape(message)
+        message = escape(message)
     self.messages[self.currentQuestion].append(message)
 
   def addMessageToEmail(self, message):
@@ -320,4 +318,3 @@ class Counter(dict):
     Returns the sum of counts for all keys.
     """
     return sum(self.values())
-

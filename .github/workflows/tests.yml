@@ -1,0 +1,80 @@
+name: Local Autograder
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  schedule:
+    - cron: '0 0 1 * *'
+  workflow_dispatch:
+
+jobs:
+  project1-tests:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.7'
+      - name: Run Search Tests
+        run: |
+          cd search
+          python3 autograder.py
+
+  project2-tests:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.7'
+      - name: Run Multi-Agent Tests
+        run: |
+          cd multiagent
+          python3 autograder.py
+
+  project3-tests:
+    runs-on: ubuntu-20.04
+    steps:
+        - uses: actions/checkout@v3
+        - name: Set up Python 3.7
+          uses: actions/setup-python@v3
+          with:
+            python-version: '3.7'
+        - name: Run Tracking Tests
+          run: |
+            cd tracking
+            python3 autograder.py
+
+  project4-tests:
+    runs-on: ubuntu-20.04
+    steps:
+        - uses: actions/checkout@v3
+        - name: Set up Python 3.7
+          uses: actions/setup-python@v3
+          with:
+            python-version: '3.7'
+        - name: Run Reinforcement Tests
+          run: |
+            cd reinforcement
+            python3 autograder.py
+
+  project5-tests:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.7'
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install -r machinelearning/requirements.txt
+      - name: Run Machine Learning Tests
+        run: |
+          cd machinelearning
+          python3 autograder.py
