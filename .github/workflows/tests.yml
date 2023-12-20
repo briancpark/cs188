@@ -11,7 +11,7 @@ on:
 
 jobs:
   setup:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     outputs:
       cache-key: ${{ steps.cache-key.outputs.key }}
 
@@ -34,7 +34,7 @@ jobs:
 
   project1-tests:
     needs: setup
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
       - name: Run Search Tests
@@ -45,7 +45,7 @@ jobs:
 
   project2-tests:
     needs: setup
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
       - name: Run Multi-Agent Tests
@@ -56,7 +56,7 @@ jobs:
 
   project3-tests:
     needs: setup
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
       - name: Run Tracking Tests
@@ -67,7 +67,7 @@ jobs:
 
   project4-tests:
     needs: setup
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
       - name: Run Reinforcement Tests
@@ -78,7 +78,7 @@ jobs:
 
   project5-tests:
     needs: setup
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
       - name: Run Machine Learning Tests
