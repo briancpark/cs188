@@ -10,74 +10,59 @@ on:
   workflow_dispatch:
 
 jobs:
-  setup:
+  project1-tests:
     runs-on: ubuntu-20.04
-    outputs:
-      cache-key: ${{ steps.cache-key.outputs.key }}
-
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v3
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v3
         with:
           python-version: '3.7'
-          architecture: 'x64'
-          cache: 'pip'
-
-      - name: Cache pip
-        id: cache-key
-        run: echo "::set-output name=key::$(date +%Y-%m-%d)"
-
-      - name: Install dependencies
-        run: |
-          python3 -m pip install --upgrade pip
-          pip3 install -r machinelearning/requirements.txt
-
-  project1-tests:
-    needs: setup
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v2
       - name: Run Search Tests
         run: |
           cd search
           python3 autograder.py
-          cd ..
 
   project2-tests:
-    needs: setup
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.7'
       - name: Run Multi-Agent Tests
         run: |
           cd multiagent
           python3 autograder.py
-          cd ..
 
   project3-tests:
-    needs: setup
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
-      - name: Run Tracking Tests
-        run: |
-          cd tracking
-          python3 autograder.py
-          cd ..
+        - uses: actions/checkout@v3
+        - name: Set up Python 3.7
+          uses: actions/setup-python@v3
+          with:
+            python-version: '3.7'
+        - name: Run Tracking Tests
+          run: |
+            cd tracking
+            python3 autograder.py
 
   project4-tests:
-    needs: setup
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
-      - name: Run Reinforcement Tests
-        run: |
-          cd reinforcement
-          python3 autograder.py
-          cd ..
+        - uses: actions/checkout@v3
+        - name: Set up Python 3.7
+          uses: actions/setup-python@v3
+          with:
+            python-version: '3.7'
+        - name: Run Reinforcement Tests
+          run: |
+            cd reinforcement
+            python3 autograder.py
 
   project5-tests:
-    needs: setup
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -93,4 +78,3 @@ jobs:
         run: |
           cd machinelearning
           python3 autograder.py
-          cd ..
