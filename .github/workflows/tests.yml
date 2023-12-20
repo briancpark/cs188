@@ -1,0 +1,88 @@
+name: Local Autograder
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  schedule:
+    - cron: '0 0 1 * *'
+  workflow_dispatch:
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.key }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3
+        with:
+          python-version: '3.7'
+          architecture: 'x64'
+          cache: 'pip'
+
+      - name: Cache pip
+        id: cache-key
+        run: echo "::set-output name=key::$(date +%Y-%m-%d)"
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install -r machinelearning/requirements.txt
+
+  project1-tests:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run Search Tests
+        run: |
+          cd search
+          python3 autograder.py
+          cd ..
+
+  project2-tests:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run Multi-Agent Tests
+        run: |
+          cd multiagent
+          python3 autograder.py
+          cd ..
+
+  project3-tests:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run Tracking Tests
+        run: |
+          cd tracking
+          python3 autograder.py
+          cd ..
+
+  project4-tests:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run Reinforcement Tests
+        run: |
+          cd reinforcement
+          python3 autograder.py
+          cd ..
+
+  project5-tests:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run Machine Learning Tests
+        run: |
+          cd machinelearning
+          python3 autograder.py
+          cd ..
