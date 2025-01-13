@@ -105,8 +105,6 @@ class RegressionModel(object):
 
         return r8
 
-        #return nn.AddBias(nn.Linear(nn.ReLU(nn.AddBias(nn.Linear(nn.ReLU(nn.AddBias(nn.Linear(x, self.w1), self.b1)), self.w2), self.b2)), self.w3), self.b3)
-
     def get_loss(self, x, y):
         """
         Computes the loss for a batch of examples.
@@ -187,9 +185,16 @@ class DigitClassificationModel(object):
                 (also called logits)
         """
         "*** YOUR CODE HERE ***"
-        return nn.AddBias(nn.Linear(
-            nn.ReLU(nn.AddBias(nn.Linear(nn.ReLU(nn.AddBias(nn.Linear(x, self.w1), self.b1)), self.w2), self.b2)),
-            self.w3), self.b3)
+        r1 = nn.Linear(x, self.w1)
+        r2 = nn.AddBias(r1, self.b1)
+        r3 = nn.ReLU(r2)
+        r4 = nn.Linear(r3, self.w2)
+        r5 = nn.AddBias(r4, self.b2)
+        r6 = nn.ReLU(r5)
+        r7 = nn.Linear(r6, self.w3)
+        r8 = nn.AddBias(r7, self.b3)
+        
+        return r8
 
     def get_loss(self, x, y):
         """
@@ -289,7 +294,14 @@ class LanguageIDModel(object):
         v = nn.AddBias(nn.Linear(xs[0], self.w1), self.b1)
 
         for x in xs:
-            v = nn.ReLU(nn.AddBias(nn.Linear(nn.AddBias(nn.Add(nn.Linear(x, self.w1), v), self.b1), self.w2), self.b2))
+            r1 = nn.Linear(x, self.w1)
+            r2 = nn.Add(r1, v)
+            r3 = nn.AddBias(r2, self.b1)
+            r4 = nn.ReLU(r3)
+            r5 = nn.Linear(r4, self.w2)
+            r6 = nn.AddBias(r5, self.b2)
+            r7 = nn.ReLU(r6)
+            v = r7
 
         return nn.AddBias(nn.Linear(v, self.w3), self.b3)
 

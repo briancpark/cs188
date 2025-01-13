@@ -10,10 +10,23 @@ on:
   workflow_dispatch:
 
 jobs:
+  tutorial-tests:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.7'
+      - name: Run Tutorial Tests
+        run: |
+          cd tutorial
+          python3 autograder.py
+
   project1-tests:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python 3.7
         uses: actions/setup-python@v3
         with:
@@ -26,7 +39,7 @@ jobs:
   project2-tests:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python 3.7
         uses: actions/setup-python@v3
         with:
@@ -39,7 +52,7 @@ jobs:
   project3-tests:
     runs-on: ubuntu-20.04
     steps:
-        - uses: actions/checkout@v3
+        - uses: actions/checkout@v4
         - name: Set up Python 3.7
           uses: actions/setup-python@v3
           with:
@@ -52,7 +65,7 @@ jobs:
   project4-tests:
     runs-on: ubuntu-20.04
     steps:
-        - uses: actions/checkout@v3
+        - uses: actions/checkout@v4
         - name: Set up Python 3.7
           uses: actions/setup-python@v3
           with:
@@ -65,7 +78,7 @@ jobs:
   project5-tests:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Set up Python 3.7
         uses: actions/setup-python@v3
         with:
@@ -78,3 +91,33 @@ jobs:
         run: |
           cd machinelearning
           python3 autograder.py
+
+  minicontest1:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.7'
+      - name: Run Minicontest 1
+        run: |
+          cd minicontest1
+          python3 autograder.py
+  
+  minicontest2:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.7'
+      - name: Install Xvfb
+        run: |
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+      - name: Run Minicontest 2
+        run: |
+          cd minicontest2
+          xvfb-run -a python3 capture.py -r baselineTeam -b myTeam
