@@ -113,7 +113,11 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: '3.7'
+      - name: Install Xvfb
+        run: |
+            sudo apt-get update
+            sudo apt-get install -y xvfb
       - name: Run Minicontest 2
         run: |
           cd minicontest2
-          python capture.py -r baselineTeam -b myTeam
+          xvfb-run -a python3 capture.py -r baselineTeam -b myTeam
