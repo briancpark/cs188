@@ -11,7 +11,7 @@
 # Student side autograding was added by Brad Miller, Nick Hay, and
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
-from game import Agent
+from game import Agent, Actions, Directions
 from searchProblems import PositionSearchProblem
 
 import util
@@ -23,57 +23,27 @@ IMPORTANT
 `agent` defines which agent you will use. By default, it is set to ClosestDotAgent,
 but when you're ready to test your own agent, replace it with MyAgent
 """
-def createAgents(num_pacmen, agent='ClosestDotAgent'):
-    #return [eval(agent)(index=i) for i in range(min(2, num_pacmen))]
+def createAgents(num_pacmen, agent='MyAgent'):
     return [eval(agent)(index=0)]
-    #return [eval(agent)(index=i) for i in range(num_pacmen)]
+
+# Compute spent in getAction costs 1000 points per second, but planning in
+# registerInitialState is free as long as it finishes within the 1s startup
+# alarm. So MyAgent plans the whole food tour up front and only replays it.
+PLANNING_BUDGET = 0.5
 
 class MyAgent(Agent):
     """
-    Implementation of your agent.
+    Plans a short open tour over every food pellet at startup (nearest
+    neighbor, then 2-opt and or-opt), then replays the resulting actions.
     """
 
     def getAction(self, state):
         """
         Returns the next action the agent will take
         """
-
-        "*** YOUR CODE HERE ***"
-        return self.value(gameState, self.index, self.depth * gameState.getNumAgents())[1]
-
-    def value(self, state, agent_index, layers):
-        if state.isWin() or state.isLose() or layers == 0:
-            return self.evaluationFunction(state), Directions.STOP
-        if agent_index == 0:
-            return self.max_value(state, agent_index, layers - 1)
-        if agent_index != 0:
-            return self.exp_value(state, agent_index, layers - 1)
-
-    def max_value(self, state, agent_index, layers):
-        v = (float("-inf"), Directions.STOP)
-
-        for action in state.getLegalActions(agent_index):
-            v = max(v,
-                    (self.value(state.generateSuccessor(agent_index, action),
-                                (agent_index + 1) % state.getNumAgents(),
-                                layers)[0], action),
-                    key=lambda x: x[0])
-        return v
-
-    def exp_value(self, state, agent_index, layers):
-        v = 0
-        states = []
-
-        for action in state.getLegalActions(agent_index):
-            score = \
-            self.value(state.generateSuccessor(agent_index, action), (agent_index + 1) % state.getNumAgents(),
-                       layers)[0]
-            v += score
-            states.append((score, action))
-
-        expected = v / len(states)
-
-        return expected, min(states, key=lambda x: abs(x[0] - expected))[1]
+        if self.plan:
+            return self.plan.pop()
+        return Directions.STOP
 
     def initialize(self):
         """
@@ -81,10 +51,147 @@ class MyAgent(Agent):
         when the agent is first created. If you don't need to use it, then
         leave it blank
         """
+        self.plan = []
 
-        "*** YOUR CODE HERE"
+    def registerInitialState(self, state):
+        deadline = time.time() + PLANNING_BUDGET
+        walls = state.getWalls()
+        start = state.getPacmanPosition(self.index)
+        foods = state.getFood().asList()
+        if not foods:
+            return
 
-        #raise NotImplementedError()
+        # Flatten the open cells so BFS works on small integer ids.
+        cells = [(x, y) for x in range(walls.width) for y in range(walls.height) if not walls[x][y]]
+        cell_id = {c: i for i, c in enumerate(cells)}
+        neighbors = []
+        for x, y in cells:
+            neighbors.append([cell_id[n] for n in ((x, y + 1), (x, y - 1), (x + 1, y), (x - 1, y)) if n in cell_id])
+
+        nodes = [cell_id[start]] + [cell_id[f] for f in foods]
+        n = len(nodes)
+        dist = [self.bfs(src, neighbors, len(cells)) for src in nodes]
+        d = [[dist[i][nodes[j]] for j in range(n)] for i in range(n)]
+
+        order = self.nearestNeighborTour(d, n)
+        order = self.improveTour(order, d, deadline)
+        self.plan = self.buildActions(order, nodes, cells, neighbors, foods, start)
+        self.plan.reverse()
+
+    def bfs(self, src, neighbors, num_cells):
+        dist = [-1] * num_cells
+        dist[src] = 0
+        frontier = [src]
+        while frontier:
+            nxt = []
+            for u in frontier:
+                du = dist[u] + 1
+                for v in neighbors[u]:
+                    if dist[v] < 0:
+                        dist[v] = du
+                        nxt.append(v)
+            frontier = nxt
+        return dist
+
+    def nearestNeighborTour(self, d, n):
+        order = [0]
+        unvisited = set(range(1, n))
+        while unvisited:
+            row = d[order[-1]]
+            nxt = min(unvisited, key=row.__getitem__)
+            unvisited.remove(nxt)
+            order.append(nxt)
+        return order
+
+    def improveTour(self, order, d, deadline):
+        """
+        Open-path 2-opt and or-opt with node 0 (the start) fixed in front.
+        Stops early once the planning deadline passes.
+        """
+        n = len(order)
+        improved = True
+        while improved and time.time() < deadline:
+            improved = False
+            # 2-opt: reverse order[i..j]. The edge after j may not exist.
+            for i in range(1, n - 1):
+                a, b = order[i - 1], order[i]
+                da = d[a]
+                for j in range(i + 1, n):
+                    c = order[j]
+                    if j + 1 < n:
+                        e = order[j + 1]
+                        delta = da[c] + d[b][e] - da[b] - d[c][e]
+                    else:
+                        delta = da[c] - da[b]
+                    if delta < 0:
+                        order[i:j + 1] = reversed(order[i:j + 1])
+                        b = order[i]
+                        improved = True
+                if time.time() >= deadline:
+                    return order
+            # or-opt: move a segment of 1-3 nodes to a better position.
+            for seg in (1, 2, 3):
+                i = 1
+                while i + seg <= n:
+                    prev, first, last = order[i - 1], order[i], order[i + seg - 1]
+                    nxt = order[i + seg] if i + seg < n else None
+                    removed = d[prev][first] + (d[last][nxt] - d[prev][nxt] if nxt is not None else 0)
+                    rest = order[:i] + order[i + seg:]
+                    segment = order[i:i + seg]
+                    best, best_k, best_rev = 0, None, False
+                    for k in range(1, len(rest) + 1):
+                        p = rest[k - 1]
+                        q = rest[k] if k < len(rest) else None
+                        base = d[p][q] if q is not None else 0
+                        for rev, (s, t) in ((False, (first, last)), (True, (last, first))):
+                            added = d[p][s] + (d[t][q] if q is not None else 0) - base
+                            if added - removed < best:
+                                best, best_k, best_rev = added - removed, k, rev
+                    if best_k is not None:
+                        if best_rev:
+                            segment.reverse()
+                        order = rest[:best_k] + segment + rest[best_k:]
+                        improved = True
+                    i += 1
+                    if time.time() >= deadline:
+                        return order
+        return order
+
+    def buildActions(self, order, nodes, cells, neighbors, foods, start):
+        """
+        Walk the tour along shortest paths, skipping any target already
+        eaten on the way to an earlier one.
+        """
+        remaining = set(nodes[1:])
+        actions = []
+        cur = nodes[0]
+        for idx in order[1:]:
+            target = nodes[idx]
+            if target not in remaining:
+                continue
+            for v in self.shortestPath(cur, target, neighbors):
+                actions.append(Actions.vectorToDirection((cells[v][0] - cells[cur][0], cells[v][1] - cells[cur][1])))
+                remaining.discard(v)
+                cur = v
+        return actions
+
+    def shortestPath(self, src, dst, neighbors):
+        parent = {src: None}
+        frontier = [src]
+        while dst not in parent:
+            nxt = []
+            for u in frontier:
+                for v in neighbors[u]:
+                    if v not in parent:
+                        parent[v] = u
+                        nxt.append(v)
+            frontier = nxt
+        path = []
+        while dst != src:
+            path.append(dst)
+            dst = parent[dst]
+        path.reverse()
+        return path
 
 """
 Put any other SearchProblems or search methods below. You may also import classes/methods in

@@ -13,216 +13,317 @@
 
 
 from captureAgents import CaptureAgent
-import random, time, util
-from game import Directions
-from util import nearestPoint
-
-import game
+from game import Directions, Actions
 
 #################
 # Team creation #
 #################
 
 def createTeam(firstIndex, secondIndex, isRed,
-               first = 'OffensiveReflexAgent', second = 'DefensiveReflexAgent'):
+               first = 'OffensiveAgent', second = 'DefensiveAgent'):
   """
   This function should return a list of two agents that will form the
   team, initialized using firstIndex and secondIndex as their agent
   index numbers.  isRed is True if the red team is being created, and
   will be False if the blue team is being created.
-
-  As a potentially helpful development aid, this function can take
-  additional string-valued keyword arguments ("first" and "second" are
-  such arguments in the case of this function), which will come from
-  the --redOpts and --blueOpts command-line arguments to capture.py.
-  For the nightly contest, however, your team will be created without
-  any extra arguments, so you should make sure that the default
-  behavior is what you want for the nightly contest.
   """
-
-  # The following line is an example onpython capture.pyly; feel free to change it.
   return [eval(first)(firstIndex), eval(second)(secondIndex)]
 
 ##########
 # Agents #
 ##########
-class ReflexCaptureAgent(CaptureAgent):
 
+class PlanningAgent(CaptureAgent):
   """
-  A base class for reflex agents that chooses score-maximizing actions
+  Shared machinery: the maze graph, our side of the border, dead-end pockets,
+  and a BFS that only expands cells passing a safety test.
+
+  Enemy positions are always visible in this contest (the sonar code in
+  capture.py is disabled), so agents plan against exact ghost positions.
   """
+
+  # Ghosts farther than this are ignored when planning a path: we replan
+  # every move, so a ghost that starts chasing gets avoided once it is close.
+  SAFETY_RADIUS = 3
 
   def registerInitialState(self, gameState):
-    self.start = gameState.getAgentPosition(self.index)
     CaptureAgent.registerInitialState(self, gameState)
+    self.start = gameState.getAgentPosition(self.index)
+    walls = gameState.getWalls()
+    self.width = walls.width
+    self.neighbors = {}
+    for x in range(walls.width):
+      for y in range(walls.height):
+        if not walls[x][y]:
+          self.neighbors[(x, y)] = [(nx, ny) for nx, ny in ((x, y + 1), (x, y - 1), (x + 1, y), (x - 1, y))
+                                    if not walls[nx][ny]]
+    homeX = self.width // 2 - 1 if self.red else self.width // 2
+    self.border = [(homeX, y) for y in range(walls.height) if not walls[homeX][y]]
+    self.computePockets()
+
+  def computePockets(self):
+    """
+    Peels dead ends off the maze. For each peeled cell, records the cell where
+    its pocket joins the rest of the maze and how far inside the pocket it is.
+    A pacman inside a pocket can only escape through that entrance.
+    """
+    degree = {c: len(n) for c, n in self.neighbors.items()}
+    removed = set()
+    stack = [c for c, d in degree.items() if d <= 1]
+    while stack:
+      c = stack.pop()
+      if c in removed:
+        continue
+      removed.add(c)
+      for n in self.neighbors[c]:
+        if n not in removed:
+          degree[n] -= 1
+          if degree[n] == 1:
+            stack.append(n)
+    self.pocketEntrance = {}
+    self.pocketDepth = {}
+    frontier = []
+    for c in removed:
+      for n in self.neighbors[c]:
+        if n not in removed and c not in self.pocketEntrance:
+          self.pocketEntrance[c] = n
+          self.pocketDepth[c] = 1
+          frontier.append(c)
+    while frontier:
+      nxt = []
+      for c in frontier:
+        for n in self.neighbors[c]:
+          if n in removed and n not in self.pocketEntrance:
+            self.pocketEntrance[n] = self.pocketEntrance[c]
+            self.pocketDepth[n] = self.pocketDepth[c] + 1
+            nxt.append(n)
+      frontier = nxt
+
+  def onOurSide(self, pos):
+    return (pos[0] < self.width // 2) == self.red
+
+  def enemies(self, gameState):
+    return [(i, gameState.getAgentState(i)) for i in self.getOpponents(gameState)
+            if gameState.getAgentPosition(i) is not None]
+
+  def dangerousGhosts(self, gameState, horizon=0):
+    """Positions of enemy ghosts that can still eat us `horizon` moves from now."""
+    return [s.getPosition() for _, s in self.enemies(gameState)
+            if not s.isPacman and s.scaredTimer <= horizon + 2]
+
+  def bfs(self, start, allowed):
+    """Returns (steps, parent) for every cell reachable through allowed(cell, step)."""
+    steps = {start: 0}
+    parent = {start: None}
+    frontier = [start]
+    while frontier:
+      nxt = []
+      for c in frontier:
+        t = steps[c] + 1
+        for n in self.neighbors[c]:
+          if n not in steps and allowed(n, t):
+            steps[n] = t
+            parent[n] = c
+            nxt.append(n)
+      frontier = nxt
+    return steps, parent
+
+  def firstMove(self, start, target, parent):
+    cell = target
+    while parent[cell] != start:
+      cell = parent[cell]
+    return Actions.vectorToDirection((cell[0] - start[0], cell[1] - start[1]))
+
+  def moveToward(self, gameState, start, targets, steps, parent):
+    """Action along the shortest allowed path to the closest target, or None."""
+    reachable = [t for t in targets if t in steps and t != start]
+    if not reachable:
+      return None
+    target = min(reachable, key=lambda t: steps[t])
+    action = self.firstMove(start, target, parent)
+    if action in gameState.getLegalActions(self.index):
+      return action
+    return None
+
+  def safeCells(self, gameState):
+    """
+    BFS predicate for a pacman: a cell on the enemy side is unsafe if a ghost
+    that is still dangerous then could get there by the time we do.
+    """
+    ghosts = [(s.getPosition(), s.scaredTimer) for _, s in self.enemies(gameState) if not s.isPacman]
+    dist = self.getMazeDistance
+
+    def allowed(cell, t):
+      if self.onOurSide(cell):
+        return True
+      for g, scared in ghosts:
+        if scared <= t + 2 and dist(g, cell) <= min(t + 1, self.SAFETY_RADIUS):
+          return False
+      return True
+    return allowed
+
+  def escapeIsSafe(self, cell, t, ghosts):
+    """Whether we can get back out of the pocket containing `cell` before a ghost blocks it."""
+    if cell not in self.pocketEntrance:
+      return True
+    entrance = self.pocketEntrance[cell]
+    exitTime = t + self.pocketDepth[cell]
+    return all(self.getMazeDistance(g, entrance) > exitTime + 1 for g in ghosts)
+
+  def chase(self, gameState, myPos, targetPos):
+    """Step toward an enemy pacman on our side, staying on our side."""
+    steps, parent = self.bfs(myPos, lambda c, t: self.onOurSide(c))
+    return self.moveToward(gameState, myPos, [targetPos], steps, parent)
+
+
+class OffensiveAgent(PlanningAgent):
+  """
+  Raids enemy food along paths no ghost can intercept, skips pockets a ghost
+  could seal off, and banks food when threatened, loaded, or out of time.
+  """
+
+  CARRY_LIMIT = 6
 
   def chooseAction(self, gameState):
-    """
-    Picks among the actions with the highest Q(s,a).
-    """
-    actions = gameState.getLegalActions(self.index)
-
-    values = [self.evaluate(gameState, a) for a in actions]
-
-    maxValue = max(values)
-    bestActions = [a for a, v in zip(actions, values) if v == maxValue]
-
-    foodLeft = len(self.getFood(gameState).asList())
-
-    if foodLeft <= 2:
-      bestDist = 9999
-      for action in actions:
-        successor = self.getSuccessor(gameState, action)
-        pos2 = successor.getAgentPosition(self.index)
-        dist = self.getMazeDistance(self.start, pos2)
-        if dist < bestDist:
-          bestAction = action
-          bestDist = dist
-      return bestAction
-
-    return random.choice(bestActions)
-
-  def getSuccessor(self, gameState, action):
-    """
-    Finds the next successor which is a grid position (location tuple).
-    """
-    successor = gameState.generateSuccessor(self.index, action)
-    pos = successor.getAgentState(self.index).getPosition()
-    if pos != nearestPoint(pos):
-      # Only half a grid position was covered
-      return successor.generateSuccessor(self.index, action)
-    else:
-      return successor
-
-  def evaluate(self, gameState, action):
-    """
-    Computes a linear combination of features and feature weights
-    """
-    features = self.getFeatures(gameState, action)
-    weights = self.getWeights(gameState, action)
-    return features * weights
-
-  def getFeatures(self, gameState, action):
-    """
-    Returns a counter of features for the state
-    """
-    features = util.Counter()
-    successor = self.getSuccessor(gameState, action)
-    features['successorScore'] = self.getScore(successor)
-    return features
-
-  def getWeights(self, gameState, action):
-    """
-    Normally, weights do not depend on the gamestate.  They can be either
-    a counter or a dictionary.
-    """
-    return {'successorScore': 1.0}
-
-
-class OffensiveReflexAgent(ReflexCaptureAgent):
-  """
-  A reflex agent that seeks food. This is an agent
-  we give you to get an idea of what an offensive agent might look like,
-  but it is by no means the best or only way to build an offensive agent.
-  """
-
-  def getFeatures(self, gameState, action):
-    features = util.Counter()
-    successor = self.getSuccessor(gameState, action)
-    foodList = self.getFood(successor).asList()
-    features['successorScore'] = -len(foodList)  # self.getScore(successor)
-
-    # Compute distance to the nearest food
-
-    if len(foodList) > 0:
-      myPos = successor.getAgentState(self.index).getPosition()
-      minDistance = min([self.getMazeDistance(myPos, food) for food in foodList])
-      features['distanceToFood'] = minDistance
-    return features
-
-  def getWeights(self, gameState, action):
-    return {'successorScore': 100, 'distanceToFood': -1}
-
-
-class DefensiveReflexAgent(ReflexCaptureAgent):
-  """
-  A reflex agent that keeps its side Pacman-free. Again,
-  this is to give you an idea of what a defensive agent
-  could be like.  It is not the best or only way to make
-  such an agent.
-  """
-
-  def getFeatures(self, gameState, action):
-    features = util.Counter()
-    successor = self.getSuccessor(gameState, action)
-
-    myState = successor.getAgentState(self.index)
+    myState = gameState.getAgentState(self.index)
     myPos = myState.getPosition()
 
-    # Computes whether we're on defense (1) or offense (0)
-    features['onDefense'] = 1
-    if myState.isPacman: features['onDefense'] = 0
+    # While still a ghost at home, pick off invaders that wander close.
+    if not myState.isPacman and myState.scaredTimer == 0:
+      invaders = [s.getPosition() for _, s in self.enemies(gameState) if s.isPacman]
+      close = [p for p in invaders if self.getMazeDistance(myPos, p) <= 4]
+      if close:
+        action = self.chase(gameState, myPos, min(close, key=lambda p: self.getMazeDistance(myPos, p)))
+        if action:
+          return action
+    return self.raid(gameState)
 
-    # Computes distance to invaders we can see
-    enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
-    invaders = [a for a in enemies if a.isPacman and a.getPosition() != None]
-    features['numInvaders'] = len(invaders)
-    if len(invaders) > 0:
-      dists = [self.getMazeDistance(myPos, a.getPosition()) for a in invaders]
-      features['invaderDistance'] = min(dists)
+  def raid(self, gameState, mustReturn=False):
+    myState = gameState.getAgentState(self.index)
+    myPos = myState.getPosition()
+    carrying = myState.numCarrying
+    foods = self.getFood(gameState).asList()
+    capsules = self.getCapsules(gameState)
+    ghosts = self.dangerousGhosts(gameState)
+    movesLeft = gameState.data.timeleft // 4
+    homeDist = min(self.getMazeDistance(myPos, b) for b in self.border)
+    nearestGhost = min([self.getMazeDistance(myPos, g) for g in ghosts] or [99])
 
-    if action == Directions.STOP: features['stop'] = 1
-    rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
-    if action == rev: features['reverse'] = 1
+    steps, parent = self.bfs(myPos, self.safeCells(gameState))
 
-    return features
+    goHome = carrying > 0 and (
+      mustReturn
+      or len(foods) <= 2
+      or movesLeft <= homeDist + 4
+      or carrying >= self.CARRY_LIMIT
+      or (nearestGhost <= 5 and carrying >= 2))
+    if goHome:
+      action = self.moveToward(gameState, myPos, self.border, steps, parent)
+      if action:
+        return action
 
-  def getWeights(self, gameState, action):
-    return {'numInvaders': -1000, 'onDefense': 100, 'invaderDistance': -10, 'stop': -100, 'reverse': -2}
+    if len(foods) > 2 and movesLeft > homeDist + 4:
+      targets = [f for f in foods if f in steps and self.escapeIsSafe(f, steps[f], ghosts)]
+      # Leave food that a raiding teammate is closer to.
+      for i in self.getTeam(gameState):
+        mate = gameState.getAgentState(i)
+        if i != self.index and mate.isPacman:
+          matePos = mate.getPosition()
+          split = [f for f in targets if steps[f] <= self.getMazeDistance(matePos, f)]
+          targets = split or targets
+      if nearestGhost <= 6:
+        targets += [c for c in capsules if c in steps]
+      action = self.moveToward(gameState, myPos, targets, steps, parent)
+      if action:
+        return action
+
+    # Nothing safe to eat. Bank what we have, otherwise probe the border at
+    # the point farthest from the enemy ghosts.
+    if carrying > 0 or myState.isPacman:
+      action = self.moveToward(gameState, myPos, self.border + capsules, steps, parent)
+      if action:
+        return action
+      return self.flee(gameState, myPos, ghosts)
+    return self.probe(gameState, myPos, ghosts, steps, parent)
+
+  def probe(self, gameState, myPos, ghosts, steps, parent):
+    def openness(b):
+      return min([self.getMazeDistance(g, b) for g in ghosts] or [99]) - steps.get(b, 99) / 2.0
+    target = max(self.border, key=openness)
+    if target == myPos:
+      return Directions.STOP
+    return self.moveToward(gameState, myPos, [target], steps, parent) or Directions.STOP
+
+  def flee(self, gameState, myPos, ghosts):
+    def score(action):
+      pos = Actions.getSuccessor(myPos, action)
+      pos = (int(pos[0]), int(pos[1]))
+      return min([self.getMazeDistance(g, pos) for g in ghosts] or [99]) * 10 \
+          - min(self.getMazeDistance(pos, b) for b in self.border)
+    return max(gameState.getLegalActions(self.index), key=score)
 
 
-class DummyAgent(CaptureAgent):
+class DefensiveAgent(OffensiveAgent):
   """
-  A Dummy agent to serve as an example of the necessary agent structure.
-  You should look at baselineTeam.py for more details about how to
-  create an agent as this is the bare minimum.
+  Hunts invaders on our side, heading home first if it is out raiding. When
+  no enemy is close enough to invade before it could get back, it joins the
+  raid so a lone enemy defender has two attackers to cover.
   """
 
-  def registerInitialState(self, gameState):
-    """
-    This method handles the initial setup of the
-    agent to populate useful fields (such as what team
-    we're on).
-
-    A distanceCalculator instance caches the maze distances
-    between each pair of positions, so your agents can use:
-    self.distancer.getDistance(p1, p2)
-
-    IMPORTANT: This method may run for at most 15 seconds.
-    """
-
-    '''
-    Make sure you do not delete the following line. If you would like to
-    use Manhattan distances instead of maze distances in order to save
-    on initialization time, please take a look at
-    CaptureAgent.registerInitialState in captureAgents.py.
-    '''
-    CaptureAgent.registerInitialState(self, gameState)
-
-    '''
-    Your initialization code goes here, if you need any.
-    '''
-
+  RAID_MARGIN = 3
 
   def chooseAction(self, gameState):
-    """
-    Picks among actions randomly.
-    """
-    actions = gameState.getLegalActions(self.index)
+    myState = gameState.getAgentState(self.index)
+    myPos = myState.getPosition()
+    invaders = [s.getPosition() for _, s in self.enemies(gameState) if s.isPacman]
 
-    '''
-    You should change this in your own agent.
-    '''
+    if myState.isPacman:
+      if invaders or not self.canRaid(gameState, myPos):
+        return self.raid(gameState, mustReturn=True) if myState.numCarrying else self.goHome(gameState, myPos)
+      return self.raid(gameState)
 
-    return random.choice(actions)
+    if invaders:
+      return self.defend(gameState, myPos, myState, invaders)
+    if self.canRaid(gameState, myPos):
+      return self.raid(gameState)
+    return self.guard(gameState, myPos)
 
+  def canRaid(self, gameState, myPos):
+    """True while every enemy is farther from our border than we are from home."""
+    myHome = min(self.getMazeDistance(myPos, b) for b in self.border)
+    for _, s in self.enemies(gameState):
+      enemyToBorder = min(self.getMazeDistance(s.getPosition(), b) for b in self.border)
+      if enemyToBorder <= myHome + self.RAID_MARGIN:
+        return False
+    return True
+
+  def goHome(self, gameState, myPos):
+    steps, parent = self.bfs(myPos, self.safeCells(gameState))
+    return self.moveToward(gameState, myPos, self.border, steps, parent) \
+        or self.flee(gameState, myPos, self.dangerousGhosts(gameState))
+
+  def defend(self, gameState, myPos, myState, invaders):
+    steps, parent = self.bfs(myPos, lambda c, t: self.onOurSide(c))
+    target = min(invaders, key=lambda p: self.getMazeDistance(myPos, p))
+    if myState.scaredTimer > 0:
+      # A scared ghost dies on contact: trail at distance 2 instead.
+      ring = [c for c in steps if self.getMazeDistance(c, target) == 2]
+      action = self.moveToward(gameState, myPos, ring, steps, parent)
+      return action or self.keepAway(gameState, myPos, target)
+    return self.moveToward(gameState, myPos, [target], steps, parent) or Directions.STOP
+
+  def guard(self, gameState, myPos):
+    """Stand on the border opposite the enemy closest to crossing."""
+    steps, parent = self.bfs(myPos, lambda c, t: self.onOurSide(c))
+    enemyPositions = [s.getPosition() for _, s in self.enemies(gameState)]
+    threat = min(enemyPositions, key=lambda p: min(self.getMazeDistance(p, b) for b in self.border))
+    guard = min(self.border, key=lambda b: (self.getMazeDistance(threat, b), self.getMazeDistance(myPos, b)))
+    if guard == myPos:
+      return Directions.STOP
+    return self.moveToward(gameState, myPos, [guard], steps, parent) or Directions.STOP
+
+  def keepAway(self, gameState, myPos, target):
+    def score(action):
+      pos = Actions.getSuccessor(myPos, action)
+      return self.getMazeDistance((int(pos[0]), int(pos[1])), target)
+    return max(gameState.getLegalActions(self.index), key=score)
