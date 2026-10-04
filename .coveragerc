@@ -1,0 +1,39 @@
+[run]
+# Measure branch coverage in addition to statement coverage
+branch = True
+
+# Omit common non-student files from coverage
+omit =
+    */test_cases/*
+    */testClasses.py
+    */testParser.py
+    *TestClasses.py
+    */autograder.py
+    */grading.py
+    */graphicsDisplay.py
+    */graphicsUtils.py
+    */textDisplay.py
+    */projectParams.py
+    */layout.py
+    */layouts/*
+    */pacman.py
+    */ghostAgents.py
+    */keyboardAgents.py
+
+[report]
+# Don't report files that are 100% covered
+skip_covered = False
+
+# Show line numbers of missing coverage
+show_missing = True
+
+# Target coverage percentage
+precision = 2
+
+[html]
+# Directory for HTML coverage reports
+directory = htmlcov
+
+[xml]
+# Output file for XML coverage reports
+output = coverage.xml

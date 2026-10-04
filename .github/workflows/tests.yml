@@ -18,10 +18,23 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: '3.7'
+      - name: Install coverage
+        run: pip3 install coverage
       - name: Run Tutorial Tests
         run: |
           cd tutorial
-          python3 autograder.py
+          coverage run --source=. autograder.py
+          coverage report
+          coverage html
+          coverage xml
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tutorial-coverage
+          path: |
+            tutorial/htmlcov/
+            tutorial/coverage.xml
 
   project1-tests:
     runs-on: ubuntu-20.04
@@ -31,10 +44,23 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: '3.7'
+      - name: Install coverage
+        run: pip3 install coverage
       - name: Run Search Tests
         run: |
           cd search
-          python3 autograder.py
+          coverage run --source=. autograder.py
+          coverage report
+          coverage html
+          coverage xml
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: search-coverage
+          path: |
+            search/htmlcov/
+            search/coverage.xml
 
   project2-tests:
     runs-on: ubuntu-20.04
@@ -44,10 +70,23 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: '3.7'
+      - name: Install coverage
+        run: pip3 install coverage
       - name: Run Multi-Agent Tests
         run: |
           cd multiagent
-          python3 autograder.py
+          coverage run --source=. autograder.py
+          coverage report
+          coverage html
+          coverage xml
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: multiagent-coverage
+          path: |
+            multiagent/htmlcov/
+            multiagent/coverage.xml
 
   project3-tests:
     runs-on: ubuntu-20.04
@@ -57,10 +96,23 @@ jobs:
           uses: actions/setup-python@v3
           with:
             python-version: '3.7'
+        - name: Install coverage
+          run: pip3 install coverage
         - name: Run Tracking Tests
           run: |
             cd tracking
-            python3 autograder.py
+            coverage run --source=. autograder.py
+            coverage report
+            coverage html
+            coverage xml
+        - name: Upload coverage reports
+          uses: actions/upload-artifact@v4
+          if: always()
+          with:
+            name: tracking-coverage
+            path: |
+              tracking/htmlcov/
+              tracking/coverage.xml
 
   project4-tests:
     runs-on: ubuntu-20.04
@@ -70,10 +122,23 @@ jobs:
           uses: actions/setup-python@v3
           with:
             python-version: '3.7'
+        - name: Install coverage
+          run: pip3 install coverage
         - name: Run Reinforcement Tests
           run: |
             cd reinforcement
-            python3 autograder.py
+            coverage run --source=. autograder.py
+            coverage report
+            coverage html
+            coverage xml
+        - name: Upload coverage reports
+          uses: actions/upload-artifact@v4
+          if: always()
+          with:
+            name: reinforcement-coverage
+            path: |
+              reinforcement/htmlcov/
+              reinforcement/coverage.xml
 
   project5-tests:
     runs-on: ubuntu-20.04
@@ -87,10 +152,22 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           pip3 install -r machinelearning/requirements.txt
+          pip3 install coverage
       - name: Run Machine Learning Tests
         run: |
           cd machinelearning
-          python3 autograder.py
+          coverage run --source=. autograder.py
+          coverage report
+          coverage html
+          coverage xml
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: machinelearning-coverage
+          path: |
+            machinelearning/htmlcov/
+            machinelearning/coverage.xml
 
   minicontest1:
     runs-on: ubuntu-20.04
@@ -100,10 +177,23 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: '3.7'
+      - name: Install coverage
+        run: pip3 install coverage
       - name: Run Minicontest 1
         run: |
           cd minicontest1
-          python3 autograder.py
+          coverage run --source=. autograder.py
+          coverage report
+          coverage html
+          coverage xml
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: minicontest1-coverage
+          path: |
+            minicontest1/htmlcov/
+            minicontest1/coverage.xml
   
   minicontest2:
     runs-on: ubuntu-20.04
@@ -117,7 +207,20 @@ jobs:
         run: |
             sudo apt-get update
             sudo apt-get install -y xvfb
+      - name: Install coverage
+        run: pip3 install coverage
       - name: Run Minicontest 2
         run: |
           cd minicontest2
-          xvfb-run -a python3 capture.py -r baselineTeam -b myTeam
+          xvfb-run -a coverage run --source=. capture.py -r baselineTeam -b myTeam
+          coverage report
+          coverage html
+          coverage xml
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: minicontest2-coverage
+          path: |
+            minicontest2/htmlcov/
+            minicontest2/coverage.xml
